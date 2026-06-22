@@ -1,15 +1,16 @@
-import { PrismaClient } from "@prisma/client/extension";
-import { Decimal } from "@prisma/client/runtime/wasm-compiler-edge";
+import { PrismaClient, Prisma } from "../generated/prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 
-
-const prisma = new PrismaClient();
+const adapter = new PrismaPg({
+  connectionString: Bun.env.DATABASE_URL as string,
+});
+const prisma = new PrismaClient({ adapter });
 
 export async function saveItinerary(
   data: any,
   contextBlob: string,
   embedding: number[],
 ) {
-  // Step 1: Save itinerary + days in a transaction
   const itinerary = await prisma.itinerary.create({
     data: {
       title: data.title,
@@ -18,7 +19,7 @@ export async function saveItinerary(
       summary: data.summary,
       durationDays: data.durationDays,
       durationNights: data.durationNights,
-      priceFrom: data.priceFrom ? new Decimal(data.priceFrom) : null,
+      priceFrom: data.priceFrom ? new Prisma.Decimal(data.priceFrom) : null,
       tourType: data.tourType,
       accommodationType: data.accommodationType ?? null,
       destinations: data.destinations,
@@ -47,7 +48,6 @@ export async function saveItinerary(
     include: { days: true },
   });
 
-  // Step 2: Save context blob
   await prisma.itineraryEmbedding.create({
     data: {
       itineraryId: itinerary.id,
@@ -55,7 +55,6 @@ export async function saveItinerary(
     },
   });
 
-  // Step 3: Save vector via raw SQL (pgvector)
   await prisma.$executeRawUnsafe(
     `UPDATE "ItineraryEmbedding" SET embedding = $1::vector WHERE "itineraryId" = $2`,
     `[${embedding.join(",")}]`,
