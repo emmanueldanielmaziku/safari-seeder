@@ -1,0 +1,89 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+
+model Itinerary {
+  id                String              @id @default(cuid())
+  title             String
+  slug              String?             @unique
+  description       String              @db.Text
+  summary           String?             @db.Text
+  durationDays      Int
+  durationNights    Int
+  priceFrom         Decimal?            @db.Decimal(10, 2)
+  tourType          TourType
+  accommodationType AccommodationType?
+  destinations      String[]
+  activities        String[]
+  highlights        String[]
+  includes          String[]
+  excludes          String[]
+  wildlife          String[]
+  coverImage        String?
+  isFeatured        Boolean             @default(false)
+  isPublished       Boolean             @default(true)
+  sourceUrl         String?
+  sourceName        String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  days              ItineraryDay[]
+  embedding         ItineraryEmbedding?
+
+  @@index([isPublished])
+  @@index([durationDays])
+}
+
+model ItineraryDay {
+  id            String    @id @default(cuid())
+  itineraryId   String
+  dayNumber     Int
+  title         String
+  description   String    @db.Text
+  destination   String?
+  accommodation String?
+  mealPlan      String?
+  imageUrl      String?
+  itinerary     Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
+
+  @@unique([itineraryId, dayNumber])
+}
+
+model ItineraryEmbedding {
+  id          String    @id @default(cuid())
+  itineraryId String    @unique
+  contextBlob String    @db.Text
+  itinerary   Itinerary @relation(fields: [itineraryId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+
+enum TourType {
+  SAFARI
+  CLIMBING
+  CULTURAL
+  BEACH
+  ADVENTURE
+  WILDLIFE
+  COMBINED
+}
+
+enum AccommodationType {
+  LODGE
+  TENTED_CAMP
+  HOTEL
+  COTTAGE
+  MIXED
+}
