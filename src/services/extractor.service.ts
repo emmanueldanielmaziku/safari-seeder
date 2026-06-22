@@ -1,8 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 
-const client = new Anthropic({
-  apiKey: Bun.env.ANTHROPIC_API_KEY,
-});
+type AIProvider = "anthropic" | "deepseek";
 
 const EXTRACTION_PROMPT = `You are a tour itinerary data extractor. Extract structured data from the provided markdown content of a tour itinerary page.
 
@@ -43,28 +41,57 @@ The JSON must match this exact structure:
   ]
 }`;
 
-export async function extractItinerary(markdown: string, metadata: any) {
+async function extractWithAnthropic(prompt: string): Promise<string> {
+  const client = new Anthropic({ apiKey: Bun.env.ANTHROPIC_API_KEY });
   const response = await client.messages.create({
     model: "claude-sonnet-4-6",
     max_tokens: 4000,
-    messages: [
-      {
-        role: "user",
-        content: `${EXTRACTION_PROMPT}\n\nMetadata:\n${JSON.stringify(metadata, null, 2)}\n\nMarkdown Content:\n${markdown}`,
-      },
-    ],
+    messages: [{ role: "user", content: prompt }],
+  });
+  return response.content[0].type === "text" ? response.content[0].text : "";
+}
+
+async function extractWithDeepseek(prompt: string): Promise<string> {
+  const response = await fetch("https://api.deepseek.com/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${Bun.env.DEEPSEEK_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: "deepseek-chat",
+      max_tokens: 4000,
+      messages: [{ role: "user", content: prompt }],
+    }),
   });
 
-const text =
-  response.content[0].type === "text" ? response.content[0].text : "";
+  const data = await response.json();
+  return data.choices[0].message.content ?? "";
+}
 
-try {
+function parseJSON(text: string) {
   const clean = text
     .replace(/^```json\s*/i, "")
     .replace(/```\s*$/i, "")
     .trim();
-  return JSON.parse(clean);
-} catch {
-  throw new Error(`Failed to parse Claude response as JSON: ${text}`);
+  try {
+    return JSON.parse(clean);
+  } catch {
+    throw new Error(`Failed to parse AI response as JSON: ${text}`);
+  }
 }
+
+export async function extractItinerary(
+  markdown: string,
+  metadata: any,
+  provider: AIProvider = "anthropic",
+) {
+  const prompt = `${EXTRACTION_PROMPT}\n\nMetadata:\n${JSON.stringify(metadata, null, 2)}\n\nMarkdown Content:\n${markdown}`;
+
+  const text =
+    provider === "deepseek"
+      ? await extractWithDeepseek(prompt)
+      : await extractWithAnthropic(prompt);
+
+  return parseJSON(text);
 }

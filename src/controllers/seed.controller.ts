@@ -8,7 +8,7 @@ import { processImages } from "../services/media.service";
 import { saveItinerary } from "../services/db.service";
 
 export async function seedEngine(c: Context) {
-  const { url, format = "markdown" } = await c.req.json();
+const { url, format = "markdown", provider = "deepseek" } = await c.req.json();
 
   if (!url) {
     return c.json({ error: "URL is required" }, 400);
@@ -31,7 +31,7 @@ export async function seedEngine(c: Context) {
   const { markdown, metadata } = await scrapeResponse.json();
 
   // Step 2: Extract structured data
-  const extracted = await extractItinerary(markdown, metadata);
+ const extracted = await extractItinerary(markdown, metadata, provider);
 
   // Step 3: Download & rehost images
   const processed = await processImages(extracted);
