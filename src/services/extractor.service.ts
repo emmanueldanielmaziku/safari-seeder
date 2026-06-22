@@ -55,12 +55,16 @@ export async function extractItinerary(markdown: string, metadata: any) {
     ],
   });
 
-  const text =
-    response.content[0].type === "text" ? response.content[0].text : "";
+const text =
+  response.content[0].type === "text" ? response.content[0].text : "";
 
-  try {
-    return JSON.parse(text);
-  } catch {
-    throw new Error(`Failed to parse Claude response as JSON: ${text}`);
-  }
+try {
+  const clean = text
+    .replace(/^```json\s*/i, "")
+    .replace(/```\s*$/i, "")
+    .trim();
+  return JSON.parse(clean);
+} catch {
+  throw new Error(`Failed to parse Claude response as JSON: ${text}`);
+}
 }
