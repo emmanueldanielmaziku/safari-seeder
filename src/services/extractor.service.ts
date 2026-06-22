@@ -84,7 +84,7 @@ function parseJSON(text: string) {
 export async function extractItinerary(
   markdown: string,
   metadata: any,
-  provider: AIProvider = "anthropic",
+  provider: AIProvider = "deepseek",
 ) {
   const prompt = `${EXTRACTION_PROMPT}\n\nMetadata:\n${JSON.stringify(metadata, null, 2)}\n\nMarkdown Content:\n${markdown}`;
 
